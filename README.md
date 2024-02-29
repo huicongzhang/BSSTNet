@@ -1,5 +1,4 @@
 # Blur-aware Spatio-temporal Sparse Transformer for Video Deblurring
-PyTorch codes for "Blur-aware Spatio-temporal Sparse Transformer for Video Deblurring (Accepted by CVPR 24)".
 
 Huicong Zhang,  [Haozhe Xie](https://haozhexie.com), [Hongxun Yao](https://scholar.google.com/citations?user=aOMFNFsAAAAJ)
 
