@@ -2,7 +2,7 @@
 
 Huicong Zhang,  [Haozhe Xie](https://haozhexie.com), [Hongxun Yao](https://scholar.google.com/citations?user=aOMFNFsAAAAJ)
 
-VILab, Harbin Institute of Technology, S-Lab, Nanyang Technological University
+Harbin Institute of Technology, S-Lab, Nanyang Technological University
 
 ## Update
 - [2024/02/29] The repo is created
