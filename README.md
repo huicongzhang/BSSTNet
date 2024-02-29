@@ -14,8 +14,7 @@ VILab, Harbin Institute of Technology, S-Lab, Nanyang Technological University
   title     = {BSSTNet: Blur-aware Spatio-temporal Sparse Transformer for Video Deblurring},
   author    = {Zhang, Huicong and 
                Xie, Haozhe and 
-               Yao, Hongxun
-               },
+               Yao, Hongxun},
   booktitle = {CVPR},
   year      = {2024}
 }
