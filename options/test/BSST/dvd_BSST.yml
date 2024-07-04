@@ -1,0 +1,55 @@
+# ------------------------------------------------------------------------
+# Copyright (c) 2021 megvii-model. All Rights Reserved.
+# ------------------------------------------------------------------------
+# Modified from BasicSR (https://github.com/xinntao/BasicSR)
+# Copyright 2018-2020 BasicSR Authors
+# ------------------------------------------------------------------------
+# general settings
+name: dvd_test
+model_type: ModelBSST
+manual_seed: 0
+num_gpu: auto
+reload: true
+retrain: False
+flowrefine_ratio: 0.25
+offset_ratio: 0.25
+softconv_ratio: 0.5
+no_fix_flow: true
+network_g:
+  type: BSST
+datasets:
+  val:
+    name: dvd
+    type: VideoRecurrentTestDatasetlocal
+    dataroot_gt: ./datasets/DVD/test/GT
+    dataroot_lq: ./datasets/DVD/test/blur
+
+    cache_data: false
+    io_backend:
+      type: disk
+
+    num_frame: 48  
+
+path:
+  pretrain_network_g: model_zoo/BSST_dvd.pth
+  strict_load_g: true
+# validation settings
+val:
+  val_freq: !!float 2500
+  save_img: false
+  crop_size: 256
+  max_minibatch: 1
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    ssim:
+      type: ssim_calculate
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29510
+find_unused_parameters: True
