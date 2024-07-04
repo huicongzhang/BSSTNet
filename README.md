@@ -73,7 +73,7 @@ scripts/dist_train.sh 2 options/test/BSST/dvd_BSST.yml
 
 ```
 @inproceedings{zhang2024bsstnet,
-  title     = {BSSTNet: Blur-aware Spatio-temporal Sparse Transformer for Video Deblurring},
+  title     = {Blur-aware Spatio-temporal Sparse Transformer for Video Deblurring},
   author    = {Zhang, Huicong and 
                Xie, Haozhe and 
                Yao, Hongxun},
