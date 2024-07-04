@@ -1,6 +1,6 @@
 # Blur-aware Spatio-temporal Sparse Transformer for Video Deblurring
 
-Huicong Zhang,  [Haozhe Xie](https://haozhexie.com), [Hongxun Yao](https://scholar.google.com/citations?user=aOMFNFsAAAAJ)
+[Huicong Zhang](https://scholar.google.com/citations?hl=zh-CN&view_op=list_works&gmla=AETOMgEHtB1sAOmB8EMhprsRACCsD_wLbTGpnaBrkyshm-oVsQtYAjL8q9BRZI6gOiD6nQZSg_urpfJV1FgXa1iGGU6rPo0&user=ASaPjIgAAAAJ),  [Haozhe Xie](https://haozhexie.com), [Hongxun Yao](https://scholar.google.com/citations?user=aOMFNFsAAAAJ)
 
 Harbin Institute of Technology, S-Lab, Nanyang Technological University
 

@@ -136,7 +136,7 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-dataset
+datasets/*
 
 Visualizer
 experiments/
@@ -147,7 +147,7 @@ results/
 tb_logger/
 tb_logger_archived/
 wandb/
-model_zoos/
+model_zoos/*
 *.flo
 
 
