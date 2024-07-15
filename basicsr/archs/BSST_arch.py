@@ -649,16 +649,11 @@ def get_blur_map(flow_forwards,flow_backwards):
     return blur_st
 @ARCH_REGISTRY.register()
 class BSST(nn.Module):
-    """ Recurrent Video Restoration Transformer with Guided Deformable Attention (RVRT).
-            A PyTorch impl of : `Recurrent Video Restoration Transformer with Guided Deformable Attention`  -
-              https://arxiv.org/pdf/2205.00000
-
+    """
         Args:
-            upscale (int): Upscaling factor. Set as 1 for video deblurring, etc. Default: 4.
-            clip_size (int): Size of clip in recurrent restoration transformer.
+            upscale (int): Upscaling factor. Set as 1 for video deblurring, etc. Default: 1.
             img_size (int | tuple(int)): Size of input video. Default: [2, 64, 64].
             window_size (int | tuple(int)): Window size. Default: (2,8,8).
-            num_blocks (list[int]): Number of RSTB blocks in each stage.
             depths (list[int]): Depths of each RSTB.
             embed_dims (list[int]): Number of linear projection output channels.
             num_heads (list[int]): Number of attention head of each stage.
@@ -667,24 +662,19 @@ class BSST(nn.Module):
             qk_scale (float): Override default qk scale of head_dim ** -0.5 if set.
             norm_layer (obj): Normalization layer. Default: nn.LayerNorm.
             inputconv_groups (int): Group of the first convolution layer in RSTBWithInputConv. Default: [1,1,1,1,1,1]
-            spynet_path (str): Pretrained SpyNet model path.
-            deformable_groups (int): Number of deformable groups in deformable attention. Default: 12.
-            attention_heads (int): Number of attention heads in deformable attention. Default: 12.
-            attention_window (list[int]): Attention window size in aeformable attention. Default: [3, 3].
-            nonblind_denoising (bool): If True, conduct experiments on non-blind denoising. Default: False.
-            use_checkpoint_attn (bool): If True, use torch.checkpoint for attention modules. Default: False.
-            use_checkpoint_ffn (bool): If True, use torch.checkpoint for feed-forward modules. Default: False.
-            no_checkpoint_attn_blocks (list[int]): Layers without torch.checkpoint for attention modules.
-            no_checkpoint_ffn_blocks (list[int]): Layers without torch.checkpoint for feed-forward modules.
-            cpu_cache_length: (int): Maximum video length without cpu caching. Default: 100.
-        """
-
+            max_residue_magnitude (int): The maximum magnitude of the offset
+            residue. Default: 5. 
+            cpu_cache_length: When the length of sequence is larger
+            than this value, the intermediate features are sent to CPU. This
+            saves GPU memory, but slows down the inference speed. You can
+            increase this number if you have a GPU with large memory.
+            Default: 100. 
+    """
     def __init__(self,
                  upscale=1,
                  clip_size=2,
                  img_size=[2, 64, 64],
                  window_size=[2, 8, 8],
-                 num_blocks=[1, 2, 1],
                  depths=[2, 2, 2],
                  embed_dims=[192, 192, 192],
                  num_heads=[6, 6, 6],
@@ -694,14 +684,10 @@ class BSST(nn.Module):
                  norm_layer=nn.LayerNorm,
                  inputconv_groups=[1, 3, 3, 3, 3, 3],
                  max_residue_magnitude=5,
-                 nonblind_denoising=False,
                  cpu_cache_length=150
                  ):
-
         super().__init__()
         self.upscale = upscale
-        self.clip_size = clip_size
-        self.nonblind_denoising = nonblind_denoising
         self.cpu_cache_length = cpu_cache_length
         self.mid_channels = embed_dims[0]
         
@@ -906,19 +892,6 @@ class BSST(nn.Module):
                 self.is_mirror_extended = True
 
     def propagate(self, feats, flows, flows_check, blur_motion_map, module_name):
-        """Propagate the latent features throughout the sequence.
-        Args:
-            feats dict(list[tensor]): Features from previous branches. Each
-                component is a list of tensors with shape (n, c, h, w).
-            flows (tensor): Optical flows with shape (n, t - 1, 2, h, w).
-            module_name (str): The name of the propgation branches. Can either
-                be 'backward_1', 'forward_1', 'backward_2', 'forward_2'.
-        Return:
-            dict(list[tensor]): A dictionary containing all the propagated
-                features. Each key in the dictionary corresponds to a
-                propagation branch, which is represented by a list of tensors.
-        """
-
         n, t, _, h, w = flows.size()
 
         frame_idx = range(0, t + 1)
@@ -1009,17 +982,6 @@ class BSST(nn.Module):
         return feats
 
     def upsample(self, lqs, feats):
-        """Compute the output image given the features.
-
-        Args:
-            lqs (tensor): Input low quality (LQ) sequence with
-                shape (n, t, c, h, w).
-            feats (dict): The features from the propgation branches.
-
-        Returns:
-            Tensor: Output HR sequence with shape (n, t, c, 4h, 4w).
-
-        """
         hr = feats['trans']
         hr = self.conv_last(self.upsampler(self.conv_before_upsampler(hr.transpose(1, 2)))).transpose(1, 2)
         hr += lqs
@@ -1027,14 +989,14 @@ class BSST(nn.Module):
         
 
     def forward(self, lqs,flows_forwards_gt,flows_backwards_gt):
-        """Forward function for RVRT.
+        """Forward function for BSSTNet.
 
         Args:
-            lqs (tensor): Input low quality (LQ) sequence with
-                shape (n, t, c, h, w).
+            lqs (tensor): Input low quality sequence with
+                shape (n, t, 3, 256, 256).
 
         Returns:
-            Tensor: Output HR sequence with shape (n, t, c, 4h, 4w).
+            Tensor: Output HR sequence with shape (n, t, 3, 256, 256).
         """
         # start_time = time.time()
         n, t, _, h, w = lqs.size()

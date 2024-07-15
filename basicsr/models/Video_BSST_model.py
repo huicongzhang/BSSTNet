@@ -63,7 +63,15 @@ class ModelBSST(BaseModel):
         self.no_fix_flow = self.opt["no_fix_flow"]
         self.have_fix_flow = True
     def get_bi_flows(self,lq):
-        # lq,gt: b,t,c,h,w
+        """
+        Args:
+            lqs (tensor): Input low quality sequence with
+                shape (n, t, c, h, w). 
+                h and w need to be divisible by 8. 
+
+        Returns:
+            Tensor: Output bidirectional flows with shape (n, t-1, 2, h//4, w//4).
+        """
         b,t,c,h,w = lq.shape
         with torch.no_grad():
             lq1 = lq[:,:-1,...].reshape(b*(t-1),c,h,w)
@@ -219,7 +227,6 @@ class ModelBSST(BaseModel):
         self.net_g.train()
     def test_by_patch(self):
         self.net_g.eval()
-        
         lq = self.lq
         flows_forwards_all,flows_backwards_all = self.get_bi_flows(self.lq)
 
