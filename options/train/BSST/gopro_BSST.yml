@@ -36,10 +36,12 @@ datasets:
 
     num_frame: 24
     gt_size: 256
+    scale: 1
     interval_list: [1]
     random_reverse: false
     use_hflip: True
     use_rot: true
+    cache_data: false
 
     num_worker_per_gpu: 8
     batch_size_per_gpu: 1
