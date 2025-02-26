@@ -59,7 +59,7 @@ datasets:
     num_frame: 48  
 
 path:
-  pretrain_network_g: model_zoo/BSST_dvd.pth
+  pretrain_network_g: model_zoos/BSST_dvd.pth
   strict_load_g: true
   resume_state: ~
 
