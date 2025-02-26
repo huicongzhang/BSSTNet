@@ -60,7 +60,7 @@ class RAFT(nn.Module):
             self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=args.dropout)
             self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
 
-        checkpoints = torch.load("model_zoo/raft-things.pth", map_location=lambda storage, loc: storage)
+        checkpoints = torch.load("model_zoos/raft-things.pth", map_location=lambda storage, loc: storage)
         # 去除state_dict中模块名的前缀
         new_state_dict = {}
         for key, value in checkpoints.items():
