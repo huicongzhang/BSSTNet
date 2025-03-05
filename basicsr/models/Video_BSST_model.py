@@ -18,8 +18,8 @@ from basicsr.metrics import calculate_metric
 from basicsr.utils.registry import MODEL_REGISTRY
 from basicsr.utils.logger import AverageMeter
 from basicsr.archs.RAFT.raft import RAFT
-
-
+import os
+import cv2
 def get_dist_info():
     if dist.is_available():
         initialized = dist.is_initialized()
@@ -285,7 +285,7 @@ class ModelBSST(BaseModel):
         if self.opt['dist']:
             self.dist_validation(dataloader, current_iter, tb_logger, wandb_logger, save_img,rgb2bgr=True, use_image=True)
         else:
-            self.dist_validation(dataloader, current_iter, tb_logger, wandb_logger, save_img,rgb2bgr=True, use_image=True)
+            self.no_validation(dataloader, current_iter, tb_logger, wandb_logger, save_img,rgb2bgr=True, use_image=True)
 
     def dist_validation(self, dataloader, current_iter, tb_logger,wandb_logger, save_img, rgb2bgr=True, use_image=True):
         dataset = dataloader.dataset
@@ -334,18 +334,22 @@ class ModelBSST(BaseModel):
                 visuals['lq'] = visuals['lq'][:,-10:-2,...]
                 visuals['result'] = visuals['result'][:,-10:-2,...]
                 visuals['gt'] = visuals['gt'][:,-10:-2,...]
+                seq_index = seq_index[-10:-2]
             elif seq_index[0] == 86:
                 visuals['lq'] = visuals['lq'][:,4:-2,...]
                 visuals['result'] = visuals['result'][:,4:-2,...]
                 visuals['gt'] = visuals['gt'][:,4:-2,...]
+                seq_index = seq_index[4:-2]
             elif seq_index[0] == 29:
                 visuals['lq'] = visuals['lq'][:,17:-2,...]
                 visuals['result'] = visuals['result'][:,17:-2,...]
                 visuals['gt'] = visuals['gt'][:,17:-2,...]
+                seq_index = seq_index[17:-2]
             else:
                 visuals['lq'] = visuals['lq'][:,2:-2,...]
                 visuals['result'] = visuals['result'][:,2:-2,...]
                 visuals['gt'] = visuals['gt'][:,2:-2,...]
+                seq_index = seq_index[2:-2]
             torch.cuda.empty_cache()
             if i < num_seq:
                 for idx in range(visuals['result'].size(1)):
@@ -360,6 +364,124 @@ class ModelBSST(BaseModel):
                         for metric_idx, opt_ in enumerate(self.opt['val']['metrics'].values()):
                             result = calculate_metric(metric_data, opt_)
                             self.metric_results[folder][idx, metric_idx] += result
+                    
+
+                    
+                if rank == 0:
+                    for _ in range(world_size):
+                        
+                        pbar.update(1)
+                        pbar.set_description(f'Folder: {folder}')
+        if rank == 0:
+            pbar.close()
+        if with_metrics:
+            if self.opt['dist']:
+                
+                # collect data among GPUs
+                for _, tensor in self.metric_results.items():
+                    dist.reduce(tensor, 0)
+                
+                dist.barrier()
+                
+
+                
+            if rank == 0:
+                self._log_validation_metric_values(current_iter, dataset_name,
+                                            tb_logger,wandb_logger)
+                
+        out_metric = 0.
+        for name in self.metric_results.keys():
+            out_metric = self.metric_results[name]
+        
+        return out_metric
+    def no_validation(self, dataloader, current_iter, tb_logger,wandb_logger, save_img, rgb2bgr=True, use_image=True):
+        dataset = dataloader.dataset
+        dataset_name = dataloader.dataset.opt['name']
+        with_metrics = self.opt['val'].get('metrics') is not None
+        if with_metrics:
+            self.metric_results = {}
+            for folder,seq_index in dataset.splite_seqs_index.items():
+                if seq_index["seq_index"][0] == 52:
+                    self.metric_results[folder] = torch.zeros(
+                        8, len(self.opt['val']['metrics']), dtype=torch.float32, device='cuda')
+                elif seq_index["seq_index"][0] == 86:
+                    self.metric_results[folder] = torch.zeros(
+                        len(seq_index["seq_index"]) - 6, len(self.opt['val']['metrics']), dtype=torch.float32, device='cuda')
+                elif seq_index["seq_index"][0] == 29:
+                    self.metric_results[folder] = torch.zeros(
+                        len(seq_index["seq_index"]) - 19, len(self.opt['val']['metrics']), dtype=torch.float32, device='cuda')
+                else:
+                    self.metric_results[folder] = torch.zeros(
+                            len(seq_index["seq_index"]) - 4, len(self.opt['val']['metrics']), dtype=torch.float32, device='cuda')
+        self._initialize_best_metric_results(dataset_name)
+            
+        rank, world_size = get_dist_info()
+        num_seq = len(dataset)
+        num_pad = (world_size - (num_seq % world_size)) % world_size
+        if rank == 0:
+            pbar = tqdm(total=len(dataset), unit='image')
+            show_dir_name = f"results/{self.opt['name']}"
+            os.makedirs(show_dir_name, exist_ok=True)
+        metric_data = dict()
+        for i in range(rank, num_seq + num_pad, world_size):
+            idx_data = min(i,num_seq - 1)
+            # print(idx_data)
+            val_data = dataset[idx_data]
+            folder = val_data["seq_name"]
+            save_folder = val_data["folder"]
+            seq_index = val_data["seq"]
+            self.feed_data_test(val_data)
+            self.test_by_patch()
+
+
+            visuals = self.get_current_visuals()
+            del self.lq
+            del self.output
+            del self.gt
+
+            if seq_index[0] == 52:
+                # print(True)
+                visuals['lq'] = visuals['lq'][:,-10:-2,...]
+                visuals['result'] = visuals['result'][:,-10:-2,...]
+                visuals['gt'] = visuals['gt'][:,-10:-2,...]
+                seq_index = seq_index[-10:-2]
+            elif seq_index[0] == 86:
+                visuals['lq'] = visuals['lq'][:,4:-2,...]
+                visuals['result'] = visuals['result'][:,4:-2,...]
+                visuals['gt'] = visuals['gt'][:,4:-2,...]
+                seq_index = seq_index[4:-2]
+            elif seq_index[0] == 29:
+                visuals['lq'] = visuals['lq'][:,17:-2,...]
+                visuals['result'] = visuals['result'][:,17:-2,...]
+                visuals['gt'] = visuals['gt'][:,17:-2,...]
+                seq_index = seq_index[17:-2]
+            else:
+                visuals['lq'] = visuals['lq'][:,2:-2,...]
+                visuals['result'] = visuals['result'][:,2:-2,...]
+                visuals['gt'] = visuals['gt'][:,2:-2,...]
+                seq_index = seq_index[2:-2]
+            torch.cuda.empty_cache()
+            if i < num_seq:
+                for idx in range(visuals['result'].size(1)):
+                    result = visuals['result'][0, idx, :, :, :]
+                    result_img = tensor2img([result])  # uint8, bgr
+                    metric_data['img'] = result_img
+                    if 'gt' in visuals:
+                        gt = visuals['gt'][0, idx, :, :, :]
+                        gt_img = tensor2img([gt])  # uint8, bgr
+                        metric_data['img2'] = gt_img
+                    if with_metrics:
+                        for metric_idx, opt_ in enumerate(self.opt['val']['metrics'].values()):
+                            result = calculate_metric(metric_data, opt_)
+                            self.metric_results[folder][idx, metric_idx] += result
+                    if save_img:
+                        if rank == 0:
+                            # save_folder = folder.split("_"+folder.split("_")[-1])[0]
+                            os.makedirs(os.path.join(show_dir_name,"visualization",dataset_name,save_folder),exist_ok=True)
+                            # torchvision.utils.save_image(result.float(),os.path.join(save_folder,"{:09d}".format(seq_index[idx])))
+                            cv2.imwrite(os.path.join(show_dir_name,"visualization",dataset_name,save_folder,"{:05d}.png".format(seq_index[idx])),result_img)
+                            # print(f"{save_folder}_{seq_index[idx]}")
+
                     
                 if rank == 0:
                     for _ in range(world_size):
