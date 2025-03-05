@@ -36,7 +36,7 @@ path:
 # validation settings
 val:
   val_freq: !!float 2500
-  save_img: false
+  save_img: true
   crop_size: 256
   max_minibatch: 1
 
